@@ -1,1 +1,6 @@
 #FinalLibraries
+import pygame
+import speech_recognition
+import string
+import speech
+import random
