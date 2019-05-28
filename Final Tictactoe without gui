@@ -1,0 +1,128 @@
+import pyaudio
+import wave
+import speech_recognition as sr
+
+
+# Constants
+FORMAT = pyaudio.paInt16
+CHANNELS = 2
+RATE = 44100
+CHUNK = 1024
+RECORD_SECONDS = 4
+WAVE_OUTPUT_FILENAME = "file.wav"
+
+
+def get_text_from_speech():
+    audio = pyaudio.PyAudio()
+
+    # Start Recording
+    stream = audio.open(format=FORMAT, channels=CHANNELS,
+                        rate=RATE, input=True,
+                        frames_per_buffer=CHUNK)
+
+    print("Started recording for", RECORD_SECONDS, "seconds")
+    frames = []
+    for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
+        data = stream.read(CHUNK)
+        frames.append(data)
+    print("Finished recording.")
+
+    # Stop Recording
+    stream.stop_stream()
+    stream.close()
+    audio.terminate()
+
+    # Saving audio to a file for later usage
+    waveFile = wave.open(WAVE_OUTPUT_FILENAME, 'wb')
+    waveFile.setnchannels(CHANNELS)
+    waveFile.setsampwidth(audio.get_sample_size(FORMAT))
+    waveFile.setframerate(RATE)
+    waveFile.writeframes(b''.join(frames))
+    waveFile.close()
+
+    # Using text file to translate speech to text
+    r = sr.Recognizer()
+    audio_file = sr.AudioFile(WAVE_OUTPUT_FILENAME)
+    with audio_file as source:
+        audio = r.record(source)
+
+    text = None
+    try:
+        text = r.recognize_google(audio)
+    except Exception:
+        print("Unable to get the audio, please try again.")
+
+    return text
+
+
+from speech_to_text import get_text_from_speech
+
+choices = []
+
+for position_number in range (0, 9) :
+    choices.append(str(position_number+1))
+
+player_one_turn = True
+winner = False
+
+
+def print_board() :
+    print( '\n -----')
+    print( '|' + choices[0] + '|' + choices[1] + '|' + choices[2] + '|')
+    print( ' -----')
+    print( '|' + choices[3] + '|' + choices[4] + '|' + choices[5] + '|')
+    print( ' -----')
+    print( '|' + choices[6] + '|' + choices[7] + '|' + choices[8] + '|')
+    print( ' -----\n')
+
+
+# Main Game Loop
+while not winner :
+    print_board()
+
+    if player_one_turn :
+        print("Player 1:")
+    else :
+        print("Player 2:")
+
+    try:
+        # This will be given by speech recognition API
+        print("Speak box number. For example: number 1, number 2 etc ...")
+        text_from_speech = get_text_from_speech()
+        res_list = text_from_speech.split(' ')
+
+        if res_list[0].lower() == 'number' and res_list[1].isdigit():
+            choice = int(res_list[1])
+        else:
+            print("Unexpected input, try again.")
+            continue
+    except Exception:
+        print("Please enter a value from 1-9.")
+        continue
+    if choices[choice - 1] == 'X' or choices[choice-1] == 'O':
+        print("illegal move, plase try again")
+        continue
+
+    if player_one_turn:
+        choices[choice - 1] = 'X'
+    else :
+        choices[choice - 1] = 'O'
+
+    player_one_turn = not player_one_turn
+
+    # Logic to check if we have a winner.
+    for x in range(0, 3):
+        y = x * 3
+        if choices[y] == choices[(y + 1)] and choices[y] == choices[(y + 2)]:
+            winner = True
+            print_board()
+        if choices[x] == choices[(x + 3)] and choices[x] == choices[(x + 6)]:
+            winner = True
+            print_board()
+
+    if((choices[0] == choices[4] and choices[0] == choices[8]) or
+       (choices[2] == choices[4] and choices[4] == choices[6])) :
+        winner = True
+        print_board()
+
+print ("Player " + str(int(player_one_turn + 1)) + " wins!\n")
